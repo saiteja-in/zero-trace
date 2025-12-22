@@ -1,6 +1,6 @@
 "use client";
 import { useParams } from "next/navigation";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
 function formatTimeRemaining(seconds: number) {
   const mins = Math.floor(seconds / 60);
@@ -14,6 +14,8 @@ const Page = () => {
 
   const [copyStatus, setCopyStatus] = useState("COPY");
   const [timeRemaining, setTimeRemaining] = useState<number | null>(121);
+  const [input, setInput] = useState<string>("");
+  const inputRef=useRef<HTMLInputElement>(null)
   const copyLink = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
@@ -69,6 +71,15 @@ const Page = () => {
             <input
               autoFocus
               type="text"
+              value={input}
+              onKeyDown={(e)=>{
+                if(e.key==="Enter" && input.trim()){
+                  // send msg to backend
+                  inputRef.current?.focus()
+                }
+              }}
+              placeholder="Type message..."
+              onChange={(e)=>setInput(e.target.value)}
               className="w-full bg-black border border-zinc-800 focus:border-zinc-700 focus:outline-none transition-colors text-zinc-100 placeholder:text-zinc-700 py-3 pl-8 pr-4 text-sm"
             />
           </div>
