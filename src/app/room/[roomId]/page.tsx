@@ -85,7 +85,7 @@ const Page = () => {
               value={input}
               onKeyDown={(e)=>{
                 if(e.key==="Enter" && input.trim()){
-                  // send msg to backend
+                  sendMessage({text:input})
                   inputRef.current?.focus()
                 }
               }}
@@ -94,7 +94,10 @@ const Page = () => {
               className="w-full bg-black border border-zinc-800 focus:border-zinc-700 focus:outline-none transition-colors text-zinc-100 placeholder:text-zinc-700 py-3 pl-8 pr-4 text-sm"
             />
           </div>
-          <button className="bg-zinc-800 text-zinc-400 px-6 text-sm font-bold hover:text-zinc-200 transition-all disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
+          <button  onClick={() => {
+              sendMessage({ text: input })
+              inputRef.current?.focus()
+            }}  className="bg-zinc-800 text-zinc-400 px-6 text-sm font-bold hover:text-zinc-200 transition-all disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
             SEND
           </button>
         </div>
