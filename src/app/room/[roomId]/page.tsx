@@ -1,4 +1,7 @@
 "use client";
+import { useUsername } from "@/hooks/use-username";
+import { client } from "@/lib/eden";
+import { useMutation } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import React, { useRef, useState } from "react";
 
@@ -11,9 +14,17 @@ function formatTimeRemaining(seconds: number) {
 const Page = () => {
   const params = useParams();
   const roomId = params.roomId as string;
+  const {username}=useUsername()
 
   const [copyStatus, setCopyStatus] = useState("COPY");
   const [timeRemaining, setTimeRemaining] = useState<number | null>(121);
+  const {mutate:sendMessage}=useMutation({
+    mutationFn:async({text}:{text:string})=>{
+      await client.messages.post({
+        sender:username,text
+      },{query:{roomId}})
+    }
+  })
   const [input, setInput] = useState<string>("");
   const inputRef=useRef<HTMLInputElement>(null)
   const copyLink = () => {
@@ -74,7 +85,7 @@ const Page = () => {
               value={input}
               onKeyDown={(e)=>{
                 if(e.key==="Enter" && input.trim()){
-                  // send msg to backend
+                  sendMessage({text:input})
                   inputRef.current?.focus()
                 }
               }}
@@ -83,7 +94,10 @@ const Page = () => {
               className="w-full bg-black border border-zinc-800 focus:border-zinc-700 focus:outline-none transition-colors text-zinc-100 placeholder:text-zinc-700 py-3 pl-8 pr-4 text-sm"
             />
           </div>
-          <button className="bg-zinc-800 text-zinc-400 px-6 text-sm font-bold hover:text-zinc-200 transition-all disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
+          <button  onClick={() => {
+              sendMessage({ text: input })
+              inputRef.current?.focus()
+            }}  className="bg-zinc-800 text-zinc-400 px-6 text-sm font-bold hover:text-zinc-200 transition-all disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
             SEND
           </button>
         </div>
