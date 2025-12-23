@@ -1,6 +1,8 @@
 import { redis } from "@/lib/redis"
 import Elysia from "elysia"
 
+const MAX_ROOM_CAPACITY = 2;
+
 class AuthError extends Error {
   constructor(message: string) {
     super(message)
@@ -26,7 +28,16 @@ export const authMiddleware = new Elysia({ name: "auth" })
 
     const connected = await redis.hget<string[]>(`meta:${roomId}`, "connected")
 
-    if (!connected?.includes(token)) {
+    if (!connected) {
+      throw new AuthError("Room does not exist")
+    }
+
+    // Enforce capacity: if room is full and user is not already connected, reject.
+    if (connected.length >= MAX_ROOM_CAPACITY && !connected.includes(token)) {
+      throw new AuthError("Room is full")
+    }
+
+    if (!connected.includes(token)) {
       throw new AuthError("Invalid token")
     }
 

@@ -9,6 +9,10 @@ const message = z.object({
   timestamp: z.number(),
   roomId: z.string(),
   token: z.string().optional(),
+  isEdited: z.boolean().optional(),
+  editedAt: z.number().optional(),
+  isDeleted: z.boolean().optional(),
+  deletedAt: z.number().optional(),
 })
 
 const schema = {
@@ -16,6 +20,11 @@ const schema = {
     message,
     destroy: z.object({
       isDestroyed: z.literal(true),
+    }),
+    "message.edit": message,
+    "message.delete": z.object({
+      messageId: z.string(),
+      roomId: z.string(),
     }),
   },
 }
