@@ -5,7 +5,7 @@ import { useRealtime } from "@/lib/realtime-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {format} from "date-fns"
 import { useParams, useRouter } from "next/navigation";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 function formatTimeRemaining(seconds: number) {
   const mins = Math.floor(seconds / 60);
@@ -20,7 +20,39 @@ const Page = () => {
   const { username } = useUsername();
 
   const [copyStatus, setCopyStatus] = useState("COPY");
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(121);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
+
+  const { data: ttlData } = useQuery({
+    queryKey: ["ttl", roomId],
+    queryFn: async () => {
+      const res = await client.room.ttl.get({ query: { roomId } })
+      return res.data
+    },
+  })
+  useEffect(() => {
+    if (ttlData?.ttl !== undefined) setTimeRemaining(ttlData.ttl)
+  }, [ttlData])
+
+  useEffect(() => {
+    if (timeRemaining === null || timeRemaining < 0) return
+
+    if (timeRemaining === 0) {
+      router.push("/?destroyed=true")
+      return
+    }
+
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [timeRemaining, router])
 
   const {data:messages,refetch}=useQuery({
     queryKey:["messages",roomId],
@@ -59,11 +91,11 @@ const Page = () => {
     },
   })
 
-  // const { mutate: destroyRoom } = useMutation({
-  //   mutationFn: async () => {
-  //     await client.room.delete(null, { query: { roomId } })
-  //   },
-  // })
+  const { mutate: destroyRoom } = useMutation({
+    mutationFn: async () => {
+      await client.room.delete(null, { query: { roomId } })
+    },
+  })
 
   const [input, setInput] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +139,7 @@ const Page = () => {
             </span>
           </div>
         </div>
-        <button className="text-xs bg-zinc-800 hover:bg-red-600 px-3 py-1.5 rounded text-zinc-400 hover:text-white font-bold transition-all group flex items-center gap-2 disabled:opacity-50 uppercase">
+        <button onClick={() => destroyRoom()} className="text-xs bg-zinc-800 hover:bg-red-600 px-3 py-1.5 rounded text-zinc-400 hover:text-white font-bold transition-all group flex items-center gap-2 disabled:opacity-50 uppercase">
           <span className="group-hover:animate-pulse">☠️</span>
           destroy now
         </button>
