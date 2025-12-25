@@ -103,6 +103,11 @@ const Page = () => {
         };
       });
 
+      // Scroll to bottom immediately when sending message
+      setTimeout(() => {
+        scrollToBottom(true);
+      }, 0);
+
       // Return context with the optimistic message and previous data
       return { previousMessages, optimisticMessage };
     },
@@ -141,6 +146,38 @@ const Page = () => {
 
   const [input, setInput] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = (smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
+  };
+
+  // Auto-scroll to bottom when messages change (only if user is near bottom)
+  useEffect(() => {
+    if (!messagesContainerRef.current || !messages?.messages.length) return;
+
+    const container = messagesContainerRef.current;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+
+    // Only auto-scroll if user is already near the bottom
+    if (isNearBottom) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        scrollToBottom(true);
+      }, 50);
+    }
+  }, [messages?.messages]);
+
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    if (messages?.messages.length) {
+      setTimeout(() => {
+        scrollToBottom(false);
+      }, 100);
+    }
+  }, [roomId]);
+
   const copyLink = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
@@ -187,7 +224,10 @@ const Page = () => {
         </button>
       </header>
       {/* messages go here */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4 smooth-scrollbar"
+      >
         {messages?.messages.length === 0 && (
           <div className="flex items-center justify-center h-full">
             <p className="text-zinc-600 text-sm font-mono">
@@ -219,6 +259,7 @@ const Page = () => {
             </div>
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </div>
       <div className="p-4 border-t border-zinc-800 bg-zinc-900/30">
         <div className="flex gap-4">
