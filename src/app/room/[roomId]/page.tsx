@@ -2,10 +2,11 @@
 import { useUsername } from "@/hooks/use-username";
 import { client } from "@/lib/eden";
 import { useRealtime } from "@/lib/realtime-client";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {format} from "date-fns"
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
+import { nanoid } from "nanoid";
 
 function formatTimeRemaining(seconds: number) {
   const mins = Math.floor(seconds / 60);
@@ -54,6 +55,7 @@ const Page = () => {
     return () => clearInterval(interval)
   }, [timeRemaining, router])
 
+  const queryClient = useQueryClient();
   const {data:messages,refetch}=useQuery({
     queryKey:["messages",roomId],
     queryFn:async()=>{
@@ -73,7 +75,47 @@ const Page = () => {
         },
         { query: { roomId } }
       );
-      setInput("")
+    },
+    onMutate: async ({ text }) => {
+      // Clear input immediately for better UX
+      setInput("");
+
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: ["messages", roomId] });
+
+      // Snapshot the previous value
+      const previousMessages = queryClient.getQueryData(["messages", roomId]);
+
+      // Optimistically update the cache
+      const optimisticMessage = {
+        id: `temp-${nanoid()}`,
+        sender: username,
+        text,
+        timestamp: Date.now(),
+        roomId,
+        token: undefined,
+      };
+
+      queryClient.setQueryData(["messages", roomId], (old: any) => {
+        if (!old) return { messages: [optimisticMessage] };
+        return {
+          messages: [...old.messages, optimisticMessage],
+        };
+      });
+
+      // Return context with the optimistic message and previous data
+      return { previousMessages, optimisticMessage };
+    },
+    onError: (err, variables, context) => {
+      // Rollback to previous state on error
+      if (context?.previousMessages) {
+        queryClient.setQueryData(["messages", roomId], context.previousMessages);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
+      // The realtime event will also trigger a refetch, but this ensures we're in sync
+      queryClient.invalidateQueries({ queryKey: ["messages", roomId] });
     },
   });
 
